@@ -43,16 +43,16 @@ function timeLabel(item: ScheduleItem): string {
   return [fmt(item.startTime), fmt(item.endTime)].filter(Boolean).join(" – ");
 }
 
+type SubjectRef = { id: string; slug: string };
+
 function TodaysClasses({
   batchId,
-  batchSlug,
-  subjectSlugById,
-  fallbackSubjectSlug,
+  subjectById,
+  fallbackSubject,
 }: {
   batchId: string;
-  batchSlug: string;
-  subjectSlugById: Record<string, string>;
-  fallbackSubjectSlug: string;
+  subjectById: Record<string, SubjectRef>;
+  fallbackSubject: SubjectRef;
 }) {
   const schedule = useQuery(todaysScheduleQuery(batchId));
   const items: ScheduleItem[] = schedule.data ?? [];
@@ -71,10 +71,10 @@ function TodaysClasses({
       ) : (
         <div className="-mx-4 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
           {items.map((item) => {
-            const subjectSlug =
-              (item.batchSubjectId ? subjectSlugById[item.batchSubjectId] : undefined) ??
-              (item.subjectId ? subjectSlugById[item.subjectId] : undefined) ??
-              fallbackSubjectSlug;
+            const subject =
+              (item.batchSubjectId ? subjectById[item.batchSubjectId] : undefined) ??
+              (item.subjectId ? subjectById[item.subjectId] : undefined) ??
+              fallbackSubject;
             const status = classStatus(item);
             const meta = status ? STATUS_META[status] : null;
             // Only the source's own banner — no batch-cover stand-in.
@@ -82,10 +82,10 @@ function TodaysClasses({
             const title = item.topic ?? item.videoDetails?.name ?? null;
             const when = timeLabel(item);
             const href = buildPlayPath({
-              batchSlug,
-              subjectSlug,
-              scheduleId: item._id,
               batchId,
+              subjectId: subject.id,
+              subjectSlug: subject.slug,
+              scheduleId: item._id,
               ...(title ? { title } : {}),
             });
             return (
