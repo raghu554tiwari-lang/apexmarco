@@ -27,12 +27,12 @@ function SubjectPage() {
   const { title } = Route.useSearch();
 
   const details = useQuery(batchDetailsQuery(batchId));
-  const batchSlug = details.data?.slug;
   const subject = details.data?.subjects?.find((s) => s.slug === subjectSlug);
+  const subjectId = subject?._id ?? "";
 
   const topics = useQuery({
-    ...topicsQuery(batchSlug ?? "", subjectSlug),
-    enabled: Boolean(batchSlug),
+    ...topicsQuery(batchId, subjectId),
+    enabled: Boolean(subjectId),
   });
 
   const heading = subject?.subject ?? title ?? "Topics";
@@ -70,7 +70,7 @@ function SubjectPage() {
               key={t._id}
               to="/batch/$batchId/$subjectSlug/$topicId"
               params={{ batchId, subjectSlug, topicId: t._id }}
-              search={{ title: t.name, subject: heading }}
+              search={{ title: t.name, subject: heading, topicSlug: t.slug }}
               className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-accent"
             >
               <Layers className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
