@@ -140,24 +140,26 @@ export const batchDetailsQuery = (batchId: string) => ({
   staleTime: 5 * 60 * 1000,
 });
 
-export const topicsQuery = (batchSlug: string, subjectSlug: string) => ({
-  queryKey: ["topics", batchSlug, subjectSlug],
-  queryFn: () => contentGet<Topic[]>(`v2/batches/${batchSlug}/subject/${subjectSlug}/topics`),
+/** The content source addresses subjects by their batch-subject id, not slug. */
+export const topicsQuery = (batchId: string, subjectId: string) => ({
+  queryKey: ["topics", batchId, subjectId],
+  queryFn: () =>
+    contentGet<Topic[]>(`v2/batches/${batchId}/subject/${subjectId}/topics`, { page: 1 }),
   staleTime: 5 * 60 * 1000,
 });
 
 export type ContentType = "videos" | "notes" | "DppNotes" | "DppVideos";
 
 export const contentsQuery = (
-  batchSlug: string,
-  subjectSlug: string,
+  batchId: string,
+  subjectId: string,
   topicId: string,
   contentType: ContentType,
   page = 1,
 ) => ({
-  queryKey: ["contents", batchSlug, subjectSlug, topicId, contentType, page],
+  queryKey: ["contents", batchId, subjectId, topicId, contentType, page],
   queryFn: () =>
-    contentGet<ContentItem[]>(`v2/batches/${batchSlug}/subject/${subjectSlug}/contents`, {
+    contentGet<ContentItem[]>(`v2/batches/${batchId}/subject/${subjectId}/contents`, {
       page,
       contentType,
       tag: topicId,
@@ -232,11 +234,11 @@ export const todaysScheduleQuery = (batchId: string) => ({
 });
 
 
-export const scheduleDetailsQuery = (batchSlug: string, subjectSlug: string, scheduleId: string) => ({
-  queryKey: ["schedule-details", batchSlug, subjectSlug, scheduleId],
+export const scheduleDetailsQuery = (batchId: string, subjectId: string, scheduleId: string) => ({
+  queryKey: ["schedule-details", batchId, subjectId, scheduleId],
   queryFn: () =>
     contentGet<ScheduleDetails>(
-      `v1/batches/${batchSlug}/subject/${subjectSlug}/schedule/${scheduleId}/schedule-details`,
+      `v1/batches/${batchId}/subject/${subjectId}/schedule/${scheduleId}/schedule-details`,
     ),
   staleTime: 5 * 60 * 1000,
 });
@@ -254,42 +256,49 @@ export function attachmentUrl(a: Attachment | undefined | null): string | null {
 
 export const PLAYER_ORIGIN = "https://pwxmarco.pages.dev";
 
+export type PlayContext = {
+  batchId: string;
+  subjectId: string;
+  scheduleId: string;
+  title?: string | undefined;
+  subjectSlug?: string | undefined;
+  topicSlug?: string | undefined;
+  topicId?: string | undefined;
+};
+
 /**
  * Internal hop that resolves a lecture's full details and then hands off to the
- * external player. Slugs are needed because only the schedule-details endpoint
- * carries the player's fields (slug, dRoomId, conversationId, video key).
+ * external player, which needs fields only schedule-details carries.
  */
-export function buildPlayPath(input: {
-  batchSlug: string;
-  subjectSlug: string;
-  scheduleId: string;
-  batchId: string;
-  title?: string | undefined;
-}) {
+export function buildPlayPath(input: PlayContext) {
   const params = new URLSearchParams({
-    batchSlug: input.batchSlug,
-    subjectSlug: input.subjectSlug,
-    scheduleId: input.scheduleId,
     batchId: input.batchId,
+    subjectId: input.subjectId,
+    scheduleId: input.scheduleId,
   });
   if (input.title) params.set("title", input.title);
+  if (input.subjectSlug) params.set("subjectSlug", input.subjectSlug);
+  if (input.topicSlug) params.set("topicSlug", input.topicSlug);
+  if (input.topicId) params.set("topicId", input.topicId);
   return `/play?${params.toString()}`;
 }
 
 /** Builds the external player URL from a lecture's schedule details. */
-export function buildPlayerUrl(details: ScheduleDetails, fallbackBatchId?: string) {
+export function buildPlayerUrl(details: ScheduleDetails, ctx: PlayContext) {
+  const title = details.topic ?? details.videoDetails?.name ?? ctx.title ?? "";
   const params = new URLSearchParams({
-    video_id: details._id ?? "",
+    video_url: details.videoDetails?.videoUrl ?? "",
+    title,
+    poster: details.videoDetails?.image ?? "",
+    video_id: details._id ?? ctx.scheduleId,
     video_key: details.videoDetails?._id ?? details.videoDetails?.id ?? "",
-    batchSubjectId: details.batchSubjectId ?? "",
-    title: details.topic ?? details.videoDetails?.name ?? "",
-    bookingId: "",
-    slug: details.slug ?? "",
-    dRoomId: details.dRoomId ?? "",
-    conversationId: details.conversationId ?? "",
+    batch_id: details.batchId ?? ctx.batchId,
     subject_id: details.subject?._id ?? "",
-    batch_id: details.batchId ?? fallbackBatchId ?? "",
-    tags_id: details.tagIds?.[0] ?? details.tags?.[0]?._id ?? "",
+    video_type: "pw",
+    subject_id_original: details.batchSubjectId ?? ctx.subjectId,
+    topic_id: details.tagIds?.[0] ?? details.tags?.[0]?._id ?? ctx.topicId ?? "",
+    subject_slug: ctx.subjectSlug ?? details.subject?.slug ?? "",
+    topic_slug: ctx.topicSlug ?? details.slug ?? "",
   });
   return `${PLAYER_ORIGIN}/play.php?${params.toString()}`;
 }
