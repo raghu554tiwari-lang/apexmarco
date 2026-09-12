@@ -16,7 +16,11 @@ import {
   type Homework,
 } from "@/lib/content/client";
 
-type TopicSearch = { title?: string | undefined; subject?: string | undefined };
+type TopicSearch = {
+  title?: string | undefined;
+  subject?: string | undefined;
+  topicSlug?: string | undefined;
+};
 type Tab = ContentType | "DppTests";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -31,6 +35,7 @@ export const Route = createFileRoute("/batch/$batchId/$subjectSlug/$topicId")({
   validateSearch: (search: Record<string, unknown>): TopicSearch => ({
     title: typeof search["title"] === "string" ? search["title"] : undefined,
     subject: typeof search["subject"] === "string" ? search["subject"] : undefined,
+    topicSlug: typeof search["topicSlug"] === "string" ? search["topicSlug"] : undefined,
   }),
   head: () => ({
     meta: [
