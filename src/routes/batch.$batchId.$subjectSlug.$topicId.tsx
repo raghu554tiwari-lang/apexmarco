@@ -220,18 +220,18 @@ function VideoRow({
 
 function NotesRow({
   item,
-  batchSlug,
-  subjectSlug,
+  batchId,
+  subjectId,
 }: {
   item: ContentItem;
-  batchSlug: string;
-  subjectSlug: string;
+  batchId: string;
+  subjectId: string;
 }) {
   // Listing responses ship attachments with an empty key; the schedule-details
   // endpoint is the only place the real file key is populated.
   const detail = useQuery({
-    ...scheduleDetailsQuery(batchSlug, subjectSlug, item._id),
-    enabled: Boolean(batchSlug),
+    ...scheduleDetailsQuery(batchId, subjectId, item._id),
+    enabled: Boolean(subjectId),
   });
 
   const groups: Homework[] = [
