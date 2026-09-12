@@ -16,7 +16,11 @@ import {
   type Homework,
 } from "@/lib/content/client";
 
-type TopicSearch = { title?: string | undefined; subject?: string | undefined };
+type TopicSearch = {
+  title?: string | undefined;
+  subject?: string | undefined;
+  topicSlug?: string | undefined;
+};
 type Tab = ContentType | "DppTests";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -31,6 +35,7 @@ export const Route = createFileRoute("/batch/$batchId/$subjectSlug/$topicId")({
   validateSearch: (search: Record<string, unknown>): TopicSearch => ({
     title: typeof search["title"] === "string" ? search["title"] : undefined,
     subject: typeof search["subject"] === "string" ? search["subject"] : undefined,
+    topicSlug: typeof search["topicSlug"] === "string" ? search["topicSlug"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -45,19 +50,18 @@ export const Route = createFileRoute("/batch/$batchId/$subjectSlug/$topicId")({
 
 function TopicPage() {
   const { batchId, subjectSlug, topicId } = Route.useParams();
-  const { title, subject } = Route.useSearch();
+  const { title, subject, topicSlug } = Route.useSearch();
   const [tab, setTab] = useState<Tab>("videos");
 
   const details = useQuery(batchDetailsQuery(batchId));
-  const batchSlug = details.data?.slug;
-  // The player needs the batch-subject id, not the slug used for routing.
+  // The source addresses subjects by their batch-subject id, not the routing slug.
   const subjectId = details.data?.subjects?.find((s) => s.slug === subjectSlug)?._id ?? "";
 
   const isTests = tab === "DppTests";
 
   const contents = useQuery({
-    ...contentsQuery(batchSlug ?? "", subjectSlug, topicId, (isTests ? "videos" : tab) as ContentType),
-    enabled: Boolean(batchSlug) && !isTests,
+    ...contentsQuery(batchId, subjectId, topicId, (isTests ? "videos" : tab) as ContentType),
+    enabled: Boolean(subjectId) && !isTests,
   });
 
   const tests = useQuery({
@@ -140,15 +144,17 @@ function TopicPage() {
                     key={item._id}
                     item={item}
                     batchId={batchId}
-                    batchSlug={batchSlug ?? ""}
+                    subjectId={subjectId}
                     subjectSlug={subjectSlug}
+                    topicId={topicId}
+                    topicSlug={topicSlug}
                   />
                 ) : (
                   <NotesRow
                     key={item._id}
                     item={item}
-                    batchSlug={batchSlug ?? ""}
-                    subjectSlug={subjectSlug}
+                    batchId={batchId}
+                    subjectId={subjectId}
                   />
                 ),
               )}
@@ -161,16 +167,28 @@ function TopicPage() {
 function VideoRow({
   item,
   batchId,
-  batchSlug,
+  subjectId,
   subjectSlug,
+  topicId,
+  topicSlug,
 }: {
   item: ContentItem;
   batchId: string;
-  batchSlug: string;
+  subjectId: string;
   subjectSlug: string;
+  topicId: string;
+  topicSlug?: string | undefined;
 }) {
   const title = item.topic ?? item.videoDetails?.name ?? "Lecture";
-  const href = buildPlayPath({ batchSlug, subjectSlug, scheduleId: item._id, batchId, title });
+  const href = buildPlayPath({
+    batchId,
+    subjectId,
+    scheduleId: item._id,
+    title,
+    subjectSlug,
+    topicId,
+    topicSlug,
+  });
   const thumb = item.videoDetails?.image;
   return (
     <a
@@ -202,18 +220,18 @@ function VideoRow({
 
 function NotesRow({
   item,
-  batchSlug,
-  subjectSlug,
+  batchId,
+  subjectId,
 }: {
   item: ContentItem;
-  batchSlug: string;
-  subjectSlug: string;
+  batchId: string;
+  subjectId: string;
 }) {
   // Listing responses ship attachments with an empty key; the schedule-details
   // endpoint is the only place the real file key is populated.
   const detail = useQuery({
-    ...scheduleDetailsQuery(batchSlug, subjectSlug, item._id),
-    enabled: Boolean(batchSlug),
+    ...scheduleDetailsQuery(batchId, subjectId, item._id),
+    enabled: Boolean(subjectId),
   });
 
   const groups: Homework[] = [
