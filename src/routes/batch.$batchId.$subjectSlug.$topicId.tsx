@@ -50,19 +50,18 @@ export const Route = createFileRoute("/batch/$batchId/$subjectSlug/$topicId")({
 
 function TopicPage() {
   const { batchId, subjectSlug, topicId } = Route.useParams();
-  const { title, subject } = Route.useSearch();
+  const { title, subject, topicSlug } = Route.useSearch();
   const [tab, setTab] = useState<Tab>("videos");
 
   const details = useQuery(batchDetailsQuery(batchId));
-  const batchSlug = details.data?.slug;
-  // The player needs the batch-subject id, not the slug used for routing.
+  // The source addresses subjects by their batch-subject id, not the routing slug.
   const subjectId = details.data?.subjects?.find((s) => s.slug === subjectSlug)?._id ?? "";
 
   const isTests = tab === "DppTests";
 
   const contents = useQuery({
-    ...contentsQuery(batchSlug ?? "", subjectSlug, topicId, (isTests ? "videos" : tab) as ContentType),
-    enabled: Boolean(batchSlug) && !isTests,
+    ...contentsQuery(batchId, subjectId, topicId, (isTests ? "videos" : tab) as ContentType),
+    enabled: Boolean(subjectId) && !isTests,
   });
 
   const tests = useQuery({
