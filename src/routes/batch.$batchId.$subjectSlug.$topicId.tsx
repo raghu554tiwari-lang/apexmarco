@@ -144,15 +144,17 @@ function TopicPage() {
                     key={item._id}
                     item={item}
                     batchId={batchId}
-                    batchSlug={batchSlug ?? ""}
+                    subjectId={subjectId}
                     subjectSlug={subjectSlug}
+                    topicId={topicId}
+                    topicSlug={topicSlug}
                   />
                 ) : (
                   <NotesRow
                     key={item._id}
                     item={item}
-                    batchSlug={batchSlug ?? ""}
-                    subjectSlug={subjectSlug}
+                    batchId={batchId}
+                    subjectId={subjectId}
                   />
                 ),
               )}
@@ -165,16 +167,28 @@ function TopicPage() {
 function VideoRow({
   item,
   batchId,
-  batchSlug,
+  subjectId,
   subjectSlug,
+  topicId,
+  topicSlug,
 }: {
   item: ContentItem;
   batchId: string;
-  batchSlug: string;
+  subjectId: string;
   subjectSlug: string;
+  topicId: string;
+  topicSlug?: string | undefined;
 }) {
   const title = item.topic ?? item.videoDetails?.name ?? "Lecture";
-  const href = buildPlayPath({ batchSlug, subjectSlug, scheduleId: item._id, batchId, title });
+  const href = buildPlayPath({
+    batchId,
+    subjectId,
+    scheduleId: item._id,
+    title,
+    subjectSlug,
+    topicId,
+    topicSlug,
+  });
   const thumb = item.videoDetails?.image;
   return (
     <a
