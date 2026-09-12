@@ -57,8 +57,14 @@ export type UpstreamResult = {
   contentType: string;
 };
 
-/** Primary (open) mirror of the content source — no token required. */
-const PRIMARY_PREFIX = "https://proxy.streamvideo.co.in/fetch/api.penpencil.co";
+/**
+ * Open mirrors of the content source, tried in order — no token required.
+ * The first entry is the primary source; the rest are instant fallbacks.
+ */
+const MIRROR_PREFIXES = [
+  "https://s4-cdn.samfygros.com/radha",
+  "https://proxy.streamvideo.co.in/fetch/api.penpencil.co",
+];
 
 const BROWSER_HEADERS = {
   Accept: "application/json",
@@ -75,11 +81,12 @@ function looksHealthy(status: number, body: string) {
   }
 }
 
-async function tryPrimary(clean: string, search: string): Promise<UpstreamResult | null> {
+async function tryMirror(prefix: string, clean: string, search: string): Promise<UpstreamResult | null> {
   try {
-    const res = await fetch(`${PRIMARY_PREFIX}/${clean}${search ?? ""}`, {
+    const res = await fetch(`${prefix}/${clean}${search ?? ""}`, {
       method: "GET",
       headers: BROWSER_HEADERS,
+      signal: AbortSignal.timeout(12_000),
     });
     const body = await res.text();
     if (!looksHealthy(res.status, body)) return null;
@@ -102,8 +109,10 @@ export async function upstreamApi(path: string, search: string): Promise<Upstrea
   const clean = path.replace(/^\/+/, "");
   const url = `${API_PREFIX}/${clean}${search ?? ""}`;
 
-  const primary = await tryPrimary(clean, search);
-  if (primary) return primary;
+  for (const prefix of MIRROR_PREFIXES) {
+    const mirror = await tryMirror(prefix, clean, search);
+    if (mirror) return mirror;
+  }
 
   const call = async (token: string | null) =>
     fetch(url, {
