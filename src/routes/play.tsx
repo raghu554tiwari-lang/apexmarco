@@ -5,22 +5,27 @@ import { useEffect } from "react";
 import { buildPlayerUrl, scheduleDetailsQuery } from "@/lib/content/client";
 
 type PlaySearch = {
-  batchSlug: string;
-  subjectSlug: string;
-  scheduleId: string;
   batchId: string;
+  subjectId: string;
+  scheduleId: string;
   title?: string | undefined;
+  subjectSlug?: string | undefined;
+  topicSlug?: string | undefined;
+  topicId?: string | undefined;
 };
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
+const opt = (v: unknown) => (typeof v === "string" && v ? v : undefined);
 
 export const Route = createFileRoute("/play")({
   validateSearch: (search: Record<string, unknown>): PlaySearch => ({
-    batchSlug: str(search["batchSlug"]),
-    subjectSlug: str(search["subjectSlug"]),
-    scheduleId: str(search["scheduleId"]),
     batchId: str(search["batchId"]),
-    title: typeof search["title"] === "string" ? search["title"] : undefined,
+    subjectId: str(search["subjectId"]),
+    scheduleId: str(search["scheduleId"]),
+    title: opt(search["title"]),
+    subjectSlug: opt(search["subjectSlug"]),
+    topicSlug: opt(search["topicSlug"]),
+    topicId: opt(search["topicId"]),
   }),
   head: () => ({
     meta: [
@@ -34,14 +39,15 @@ export const Route = createFileRoute("/play")({
 });
 
 function PlayPage() {
-  const { batchSlug, subjectSlug, scheduleId, batchId, title } = Route.useSearch();
+  const search = Route.useSearch();
+  const { batchId, subjectId, scheduleId, title } = search;
 
   const details = useQuery({
-    ...scheduleDetailsQuery(batchSlug, subjectSlug, scheduleId),
-    enabled: Boolean(batchSlug && subjectSlug && scheduleId),
+    ...scheduleDetailsQuery(batchId, subjectId, scheduleId),
+    enabled: Boolean(batchId && subjectId && scheduleId),
   });
 
-  const target = details.data ? buildPlayerUrl(details.data, batchId) : null;
+  const target = details.data ? buildPlayerUrl(details.data, search) : null;
 
   useEffect(() => {
     if (target) window.location.replace(target);
